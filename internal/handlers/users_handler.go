@@ -1,9 +1,32 @@
 package handlers
 
-import "github.com/gin-gonic/gin"
+import (
+	"lunar-server/internal/database"
+	"net/http"
 
-func HelloWorld(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "Hello World!",
+	"github.com/gin-gonic/gin"
+)
+
+type User struct {
+	Name string `json:"name" binding:"required"`
+}
+
+func CreateUser(c *gin.Context) {
+	var user User
+
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := database.DB.Create(&user)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User created successfully!",
+		"user":    user,
 	})
 }

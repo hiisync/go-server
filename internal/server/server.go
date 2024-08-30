@@ -1,8 +1,10 @@
 package server
 
 import (
+	"lunar-server/internal/routes"
+	"os"
+
 	"github.com/gin-gonic/gin"
-	"github.com/hiisync/werix-server/internal/routes"
 )
 
 func StartServer() {
@@ -10,5 +12,6 @@ func StartServer() {
 
 	routes.Routes(r)
 
-	r.Run()
+	host := os.Getenv("SERVER_ADDRESS")
+	r.Run(host)
 }

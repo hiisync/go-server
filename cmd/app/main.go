@@ -1,7 +1,12 @@
 package main
 
-import "github.com/hiisync/werix-server/internal/app"
+import (
+	"lunar-server/internal/app"
+
+	"github.com/joho/godotenv"
+)
 
 func main() {
+	godotenv.Load()
 	app.Run()
 }
