@@ -15,6 +15,7 @@ import (
 
 type UserCreateRequest struct {
 	Name     string `json:"name" binding:"required,min=2,max=255"`
+	Email    string `json:"email" binding:"required,email"`
 	Username string `json:"username" binding:"required,min=3,max=255"`
 	Password string `json:"password" binding:"required,min=6,max=255"`
 }
@@ -24,18 +25,30 @@ type UserCreateRequest struct {
 // It takes a gin Context as a parameter, which contains the HTTP request and response.
 // It returns a JSON response with the created user data or an error message.
 func CreateUser(c *gin.Context) {
-	var user UserCreateRequest
+	var userRequest UserCreateRequest
 
-	// bind json data to user struct
-	if err := c.ShouldBindJSON(&user); err != nil {
+	// Bind JSON data to userRequest struct
+	if err := c.ShouldBindJSON(&userRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// hash password
-	user.Password, _ = utils.HashPassword(user.Password)
+	// Hash password
+	hashedPassword, err := utils.HashPassword(userRequest.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
 
-	// create user
+	// Create a new user model from the request
+	user := models.User{
+		Name:     userRequest.Name,
+		Email:    userRequest.Email,
+		Username: userRequest.Username,
+		Password: hashedPassword,
+	}
+
+	// Create user in the database
 	result := database.DB.Create(&user)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
@@ -47,6 +60,7 @@ func CreateUser(c *gin.Context) {
 		"user": map[string]interface{}{
 			"name":     user.Name,
 			"username": user.Username,
+			"email":    user.Email,
 		},
 	})
 }
@@ -95,7 +109,7 @@ func UserLogin(c *gin.Context) {
 	})
 
 	// Sign and get the complete encoded token as a string using the secret
-	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET")))
+	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -114,9 +128,15 @@ func UserLogin(c *gin.Context) {
 func ValidateUser(c *gin.Context) {
 	user, _ := c.Get("user")
 
-	// user.(models.User).Email
-
 	c.JSON(http.StatusOK, gin.H{
-		"message": user,
+		"user": map[string]interface{}{
+			"id":         user.(models.User).ID,
+			"username":   user.(models.User).Username,
+			"email":      user.(models.User).Email,
+			"name":       user.(models.User).Name,
+			"created_at": user.(models.User).CreatedAt,
+			"updated_at": user.(models.User).UpdatedAt,
+			"deleted_at": user.(models.User).DeletedAt,
+		},
 	})
 }
